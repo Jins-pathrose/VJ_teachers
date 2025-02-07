@@ -45,8 +45,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Video Player'),
-        backgroundColor: Colors.red,
+        title: const Text('Uploaded Video',style: TextStyle(color: Colors.white),),
+        backgroundColor: const Color.fromARGB(255, 0, 0, 0),
       ),
       body: Center(
         child: _isError

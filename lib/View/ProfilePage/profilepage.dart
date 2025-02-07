@@ -1,14 +1,19 @@
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
+import 'package:vj_teachers/View/Login/teacherlogin.dart';
 import 'package:vj_teachers/View/UplaodVideo/videoplayer.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ProfilePage extends StatefulWidget {
   final String teacherEmail;
   final String teacherUuid;
 
-  const ProfilePage({super.key, required this.teacherEmail, required this.teacherUuid});
+  const ProfilePage(
+      {super.key, required this.teacherEmail, required this.teacherUuid});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -21,14 +26,11 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-
-    // Fetch teacher data
     teacherStream = FirebaseFirestore.instance
         .collection('teachers_registration')
-        .doc(widget.teacherUuid) // Use direct document reference
+        .doc(widget.teacherUuid)
         .snapshots();
 
-    // Fetch videos uploaded by this teacher
     videosStream = FirebaseFirestore.instance
         .collection('videos')
         .where('teacher_uuid', isEqualTo: widget.teacherUuid)
@@ -43,8 +45,10 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _editVideo(String videoId, String oldchapter, String oldDescription) {
-    TextEditingController chapterController = TextEditingController(text: oldchapter);
-    TextEditingController descController = TextEditingController(text: oldDescription);
+    TextEditingController chapterController =
+        TextEditingController(text: oldchapter);
+    TextEditingController descController =
+        TextEditingController(text: oldDescription);
 
     showDialog(
       context: context,
@@ -53,8 +57,12 @@ class _ProfilePageState extends State<ProfilePage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: chapterController, decoration: const InputDecoration(labelText: 'Chapter')),
-            TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description')),
+            TextField(
+                controller: chapterController,
+                decoration: const InputDecoration(labelText: 'Chapter')),
+            TextField(
+                controller: descController,
+                decoration: const InputDecoration(labelText: 'Description')),
           ],
         ),
         actions: [
@@ -64,7 +72,10 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await FirebaseFirestore.instance.collection('videos').doc(videoId).update({
+              await FirebaseFirestore.instance
+                  .collection('videos')
+                  .doc(videoId)
+                  .update({
                 'chapter': chapterController.text,
                 'description': descController.text,
               });
@@ -77,7 +88,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Function to navigate to video player screen
   void _playVideo(String videoUrl) {
     Navigator.push(
       context,
@@ -87,101 +97,317 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Future<void> _logout() async {
+  try {
+    await AuthService.clearUserSession(); // Clear stored login session
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const TeacherLogin()),
+      (route) => false, // Remove all previous routes
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error logging out: $e')),
+    );
+  }
+}
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 219, 216, 162),
-      appBar: AppBar(
-        backgroundColor: Colors.red,
-        title: const Text('Profile Page', style: TextStyle(color: Colors.white)),
+      backgroundColor: Colors.grey[100],
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 0, 0, 0),
+              ),
+              child: CircleAvatar(
+                radius: 40, // Adjust size as needed
+                backgroundColor: Colors.transparent,
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/download (4).jpeg',
+                    fit: BoxFit.cover,
+                    width: 110, // Adjust based on CircleAvatar size
+                    height: 110,
+                  ),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.logout,
+                color: Colors.red,
+              ),
+              title: Text(
+                'Logout',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: _logout,
+            ),
+          ],
+        ),
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: teacherStream,
         builder: (context, teacherSnapshot) {
-          if (teacherSnapshot.hasError) return const Center(child: Text('Something went wrong'));
-          if (teacherSnapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (teacherSnapshot.hasError)
+            return const Center(child: Text('Something went wrong'));
+          if (teacherSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-          if (!teacherSnapshot.hasData || teacherSnapshot.data == null || !teacherSnapshot.data!.exists) {
+          if (!teacherSnapshot.hasData || !teacherSnapshot.data!.exists) {
             return const Center(child: Text('Teacher not found'));
           }
 
-          final teacherData = teacherSnapshot.data!.data() as Map<String, dynamic>;
-
-          // Safely retrieve values
+          final teacherData =
+              teacherSnapshot.data!.data() as Map<String, dynamic>;
           String teacherName = teacherData['name'] ?? 'Unknown';
           String teacherSubject = teacherData['subject'] ?? 'No subject';
-          String teacherImage = teacherData['image'] ?? 'https://via.placeholder.com/150';
+          String teacherImage =
+              teacherData['image'] ?? 'https://via.placeholder.com/150';
 
-          return Column(
-            children: [
-              ListTile(
-                leading: CircleAvatar(backgroundImage: NetworkImage(teacherImage)),
-                title: Text(teacherName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                subtitle: Text(teacherSubject),
+          return CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                expandedHeight: 200,
+                floating: false,
+                pinned: true,
+                backgroundColor: const Color.fromARGB(255, 189, 186, 186),
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color.fromARGB(255, 189, 186, 186),
+                          const Color.fromARGB(255, 0, 0, 0)
+                        ],
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 40),
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundImage: NetworkImage(teacherImage),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          teacherName,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          teacherSubject,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white70,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Your Uploaded Videos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'All Videos',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
               ),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: videosStream,
-                  builder: (context, videoSnapshot) {
-                    if (videoSnapshot.hasError) return const Text('Error loading videos');
-                    if (videoSnapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
+              StreamBuilder<QuerySnapshot>(
+                stream: videosStream,
+                builder: (context, videoSnapshot) {
+                  if (videoSnapshot.hasError) {
+                    return SliverToBoxAdapter(
+                        child: Text('Error loading videos'));
+                  }
+                  if (videoSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return SliverToBoxAdapter(
+                        child: Center(child: CircularProgressIndicator()));
+                  }
 
-                    final videos = videoSnapshot.data?.docs ?? [];
+                  final videos = videoSnapshot.data?.docs ?? [];
 
-                    return videos.isEmpty
-                        ? const Center(child: Text('No videos uploaded yet'))
-                        : ListView.builder(
-                            itemCount: videos.length,
-                            itemBuilder: (context, index) {
-                              final videoData = videos[index].data() as Map<String, dynamic>;
-                              final videoId = videos[index].id;
+                  if (videos.isEmpty) {
+                    return SliverToBoxAdapter(
+                      child: Center(child: Text('No videos uploaded yet')),
+                    );
+                  }
 
-                              // Safely retrieve video fields
-                              String videoTitle = videoData['chapter'] ?? 'Untitled';
-                              String videoDescription = videoData['description'] ?? 'No description available';
-                              String videoThumbnail = videoData['thumbnail_url'] ?? 'https://via.placeholder.com/150';
-                              String videoUrl = videoData['video_url'] ?? ''; // Assuming video URL field
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final videoData =
+                            videos[index].data() as Map<String, dynamic>;
+                        final videoId = videos[index].id;
 
-                              return Card(
-                                child: ListTile(
-                                  leading: Image.network(
-                                    videoThumbnail,
-                                    width: 80,
-                                    height: 50,
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(15),
+                              boxShadow: [
+                                BoxShadow(
+                                  spreadRadius: 1,
+                                  blurRadius: 5,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(15)),
+                                  child: Image.network(
+                                    videoData['thumbnail_url'] ??
+                                        'https://via.placeholder.com/150',
+                                    height: 200,
+                                    width: double.infinity,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
                                   ),
-                                  title: Text(videoTitle),
-                                  subtitle: Text(videoDescription),
-                                  onTap: () => _playVideo(videoUrl), // Play video when tapped
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.edit, color: Colors.blue),
-                                        onPressed: () => _editVideo(videoId, videoTitle, videoDescription),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  videoData['chapter'] ??
+                                                      'Untitled',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  'Chapter ${videoData['chapter_number'] ?? 'N/A'}',
+                                                  style: GoogleFonts.poppins(
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Row(
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(Icons.edit,
+                                                    color: Colors.blue),
+                                                onPressed: () => _editVideo(
+                                                  videoId,
+                                                  videoData['chapter'] ?? '',
+                                                  videoData['description'] ??
+                                                      '',
+                                                ),
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.delete,
+                                                    color: Colors.red),
+                                                onPressed: () =>
+                                                    _deleteVideo(videoId),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete, color: Colors.red),
-                                        onPressed: () => _deleteVideo(videoId),
+                                      const SizedBox(height: 8),
+                                      ElevatedButton(
+                                        onPressed: () => _playVideo(
+                                            videoData['video_url'] ?? ''),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.yellow[700],
+                                          foregroundColor: Colors.black,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Watch now',
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              );
-                            },
-                          );
-                  },
-                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                      childCount: videos.length,
+                    ),
+                  );
+                },
               ),
             ],
           );
         },
       ),
     );
+  }
+}
+
+class AuthService {
+  static Future<void> saveUserSession({
+    required String teacherUuid,
+    required String email,
+    required String classCategory,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('teacherUuid', teacherUuid);
+    await prefs.setString('teacherEmail', email);
+    await prefs.setString('classCategory', classCategory);
+  }
+
+  static Future<Map<String, String?>> getUserSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'teacherUuid': prefs.getString('teacherUuid'),
+      'teacherEmail': prefs.getString('teacherEmail'),
+      'classCategory': prefs.getString('classCategory'),
+    };
+  }
+
+  static Future<void> clearUserSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
   }
 }
