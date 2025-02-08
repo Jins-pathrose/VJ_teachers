@@ -97,20 +97,78 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Future<void> _logout() async {
-  try {
-    await AuthService.clearUserSession(); // Clear stored login session
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const TeacherLogin()),
-      (route) => false, // Remove all previous routes
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error logging out: $e')),
-    );
-  }
+ Future<void> _showLogoutDialog() async {
+  return showDialog(
+    context: context,
+    barrierDismissible: false, // Prevent dismissing by tapping outside
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15.0),
+        ),
+        title: Text(
+          'Logout Confirmation',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to logout?',
+          style: GoogleFonts.poppins(
+            color: Colors.black87,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close dialog
+            },
+            child: Text(
+              'No',
+              style: GoogleFonts.poppins(
+                color: Colors.grey,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop(); // Close dialog first
+              try {
+                await AuthService.clearUserSession(); // Clear stored login session
+                
+                if (mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const TeacherLogin()),
+                    (route) => false, // Remove all previous routes
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error logging out: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(
+              'Yes',
+              style: GoogleFonts.poppins(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 
@@ -148,7 +206,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 'Logout',
                 style: TextStyle(color: Colors.red),
               ),
-              onTap: _logout,
+              onTap: _showLogoutDialog,
             ),
           ],
         ),
