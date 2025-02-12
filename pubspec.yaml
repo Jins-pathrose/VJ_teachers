@@ -43,6 +43,7 @@ dependencies:
   video_player: ^2.9.2
   chewie: ^1.10.0
   shared_preferences: ^2.5.1
+  provider: ^6.1.2
 
 dev_dependencies:
   flutter_test:
