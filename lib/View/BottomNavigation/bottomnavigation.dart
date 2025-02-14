@@ -30,7 +30,7 @@ class _BottomnavigationState extends State<Bottomnavigation>
     super.initState();
     _pages = [
       ProfilePage(teacherEmail: widget.teacherEmail, teacherUuid: widget.teacherUuid),
-      const ChatPage(),
+      ChatPage(teacherUuid: widget.teacherUuid),
     ];
   }
 
