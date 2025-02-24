@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:vj_teachers/View/ChatPage/message.dart';
 
 class ChatPage extends StatefulWidget {
@@ -18,7 +19,7 @@ class _ChatPageState extends State<ChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Chats'),
+        title:  Text('My Chats',style: GoogleFonts.poppins(color: Colors.white,fontWeight: FontWeight.w800),),
         backgroundColor: Colors.black,
       ),
       body: StreamBuilder<QuerySnapshot>(
