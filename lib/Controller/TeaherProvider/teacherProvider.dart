@@ -1,77 +1,272 @@
-// teacher_provider.dart
-import 'package:flutter/material.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:flutter/material.dart';
+
+// class ProfileProvider extends ChangeNotifier {
+//   // Teacher data
+//   Map<String, dynamic>? _teacherData;
+//   List<Map<String, dynamic>> _videos = [];
+//   bool _isLoading = true;
+//   String? _error;
+
+//   // Getters
+//   Map<String, dynamic>? get teacherData => _teacherData;
+//   List<Map<String, dynamic>> get videos => _videos;
+//   bool get isLoading => _isLoading;
+//   String? get error => _error;
+
+//   // Load teacher data
+//   Future<void> loadTeacherData(String teacherUuid) async {
+//     _isLoading = true;
+//     _error = null;
+//     notifyListeners();
+
+//     try {
+//       final teacherDoc = await FirebaseFirestore.instance
+//           .collection('teachers_registration')
+//           .doc(teacherUuid)
+//           .get();
+
+//       if (teacherDoc.exists) {
+//         _teacherData = teacherDoc.data();
+//       } else {
+//         _error = 'Teacher not found';
+//       }
+//     } catch (e) {
+//       _error = 'Failed to load teacher data: $e';
+//     }
+
+//     _isLoading = false;
+//     notifyListeners();
+//   }
+
+//   // Load teacher videos
+//   Future<void> loadTeacherVideos(String teacherUuid) async {
+//     _isLoading = true;
+//     _error = null;
+//     notifyListeners();
+
+//     try {
+//       final videosSnapshot = await FirebaseFirestore.instance
+//           .collection('videos')
+//           .where('teacher_uuid', isEqualTo: teacherUuid)
+//           .get();
+
+//       _videos = videosSnapshot.docs.map((doc) {
+//         final data = doc.data();
+//         return {
+//           'id': doc.id,
+//           ...data,
+//         };
+//       }).toList();
+//     } catch (e) {
+//       _error = 'Failed to load videos: $e';
+//     }
+
+//     _isLoading = false;
+//     notifyListeners();
+//   }
+
+//   // Delete video
+//   Future<void> deleteVideo(String videoId) async {
+//     try {
+//       await FirebaseFirestore.instance.collection('videos').doc(videoId).delete();
+//       _videos.removeWhere((video) => video['id'] == videoId);
+//       notifyListeners();
+//     } catch (e) {
+//       _error = 'Failed to delete video: $e';
+//       notifyListeners();
+//     }
+//   }
+
+//   // Edit video
+//   Future<void> updateVideo(String videoId, String chapter, String description) async {
+//     try {
+//       await FirebaseFirestore.instance
+//           .collection('videos')
+//           .doc(videoId)
+//           .update({
+//         'chapter': chapter,
+//         'description': description,
+//       });
+
+//       final index = _videos.indexWhere((video) => video['id'] == videoId);
+//       if (index != -1) {
+//         _videos[index]['chapter'] = chapter;
+//         _videos[index]['description'] = description;
+//       }
+      
+//       notifyListeners();
+//     } catch (e) {
+//       _error = 'Failed to update video: $e';
+//       notifyListeners();
+//     }
+//   }
+
+//   // Reset error
+//   void resetError() {
+//     _error = null;
+//     notifyListeners();
+//   }
+// }
+
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
-class TeacherProvider extends ChangeNotifier {
-  final String teacherUuid;
-  Map<String, dynamic>? teacherData;
-  List<QueryDocumentSnapshot>? videos;
-  bool isLoading = true;
+class ProfileProvider extends ChangeNotifier {
+  // Teacher data
+  Map<String, dynamic>? _teacherData;
+  List<Map<String, dynamic>> _videos = [];
+  bool _isLoading = true;
+  String? _error;
+  String? _teacherUuid;
+  StreamSubscription<QuerySnapshot>? _videosSubscription;
 
-  TeacherProvider({required this.teacherUuid}) {
-    _initializeData();
+  // Getters
+  Map<String, dynamic>? get teacherData => _teacherData;
+  List<Map<String, dynamic>> get videos => _videos;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  String? get teacherUuid => _teacherUuid;
+
+  // Initialize provider with teacher UUID
+  void initialize(String teacherUuid) {
+    if (_teacherUuid != teacherUuid) {
+      _teacherUuid = teacherUuid;
+      loadTeacherData(teacherUuid);
+      setupVideosListener(teacherUuid);
+    }
   }
 
-  Future<void> _initializeData() async {
+  // Load teacher data
+  Future<void> loadTeacherData(String teacherUuid) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
-      // Fetch teacher data
       final teacherDoc = await FirebaseFirestore.instance
           .collection('teachers_registration')
           .doc(teacherUuid)
           .get();
-      
-      if (teacherDoc.exists) {
-        teacherData = teacherDoc.data();
-      }
 
-      // Fetch videos
-      final videosDocs = await FirebaseFirestore.instance
-          .collection('videos')
-          .where('teacher_uuid', isEqualTo: teacherUuid)
-          .get();
-      
-      videos = videosDocs.docs;
-      isLoading = false;
-      notifyListeners();
+      if (teacherDoc.exists) {
+        _teacherData = teacherDoc.data();
+      } else {
+        _error = 'Teacher not found';
+      }
     } catch (e) {
-      print('Error initializing data: $e');
-      isLoading = false;
-      notifyListeners();
+      _error = 'Failed to load teacher data: $e';
     }
+
+    _isLoading = false;
+    notifyListeners();
   }
 
+  // Set up real-time listener for videos
+  void setupVideosListener(String teacherUuid) {
+    // Cancel existing subscription if any
+    _videosSubscription?.cancel();
+    
+    _isLoading = true;
+    notifyListeners();
+
+    // Set up new subscription
+    _videosSubscription = FirebaseFirestore.instance
+        .collection('videos')
+        .where('teacher_uuid', isEqualTo: teacherUuid)
+        .snapshots()
+        .listen(
+      (snapshot) {
+        _videos = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return {
+            'id': doc.id,
+            ...data,
+          };
+        }).toList();
+        
+        _isLoading = false;
+        notifyListeners();
+      },
+      onError: (e) {
+        _error = 'Failed to load videos: $e';
+        _isLoading = false;
+        notifyListeners();
+      },
+    );
+  }
+
+  // Delete video
   Future<void> deleteVideo(String videoId) async {
     try {
       await FirebaseFirestore.instance.collection('videos').doc(videoId).delete();
-      videos?.removeWhere((video) => video.id == videoId);
-      notifyListeners();
+      // No need to update _videos manually - the listener will handle it
     } catch (e) {
-      print('Error deleting video: $e');
-      rethrow;
+      _error = 'Failed to delete video: $e';
+      notifyListeners();
     }
   }
 
+  // Edit video
   Future<void> updateVideo(String videoId, String chapter, String description) async {
     try {
-      await FirebaseFirestore.instance.collection('videos').doc(videoId).update({
+      await FirebaseFirestore.instance
+          .collection('videos')
+          .doc(videoId)
+          .update({
         'chapter': chapter,
         'description': description,
       });
-      
-      final updatedVideos = await FirebaseFirestore.instance
-          .collection('videos')
-          .where('teacher_uuid', isEqualTo: teacherUuid)
-          .get();
-      
-      videos = updatedVideos.docs;
-      notifyListeners();
+      // No need to update _videos manually - the listener will handle it
     } catch (e) {
-      print('Error updating video: $e');
-      rethrow;
+      _error = 'Failed to update video: $e';
+      notifyListeners();
     }
   }
 
-  String get teacherName => teacherData?['name'] ?? 'Unknown';
-  String get teacherSubject => teacherData?['subject'] ?? 'No subject';
-  String get teacherImage => teacherData?['image'] ?? 'https://via.placeholder.com/150';
+  // Reset error
+  void resetError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  // Add a new video to Firestore
+  Future<void> addVideo({
+    required String chapter,
+    required String description,
+    required String videoUrl,
+    required String thumbnailUrl,
+    required String classCategory,
+  }) async {
+    if (_teacherUuid == null) {
+      _error = 'Teacher ID is not set';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance.collection('videos').add({
+        'teacher_uuid': _teacherUuid,
+        'classCategory': classCategory,
+        'chapter': chapter,
+        'description': description,
+        'video_url': videoUrl,
+        'thumbnail_url': thumbnailUrl,
+        'uploaded_at': FieldValue.serverTimestamp(),
+        'isapproved': false
+      });
+      // No need to update _videos manually - the listener will handle it
+    } catch (e) {
+      _error = 'Failed to add video: $e';
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _videosSubscription?.cancel();
+    super.dispose();
+  }
 }
