@@ -121,7 +121,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:vj_teachers/Controller/teacherDetails_provider.dart';
+import 'package:vj_teachers/Controller/TeacherDetails/teacherDetails_provider.dart';
 
 class DetailPage extends StatefulWidget {
   final String teacherUuid;

@@ -280,7 +280,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:vj_teachers/Controller/teachrLogin_provider.dart';
+import 'package:vj_teachers/Controller/TeacherLogin/teachrLogin_provider.dart';
 import 'package:vj_teachers/Model/Validation/vaidation.dart';
 import 'package:vj_teachers/View/BottomNavigation/bottomnavigation.dart';
 

@@ -497,7 +497,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:vj_teachers/Controller/teacherProvider.dart';
+import 'package:vj_teachers/Controller/TeaherProvider/teacherProvider.dart';
 import 'package:vj_teachers/View/Login/teacherlogin.dart';
 import 'package:vj_teachers/View/ProfilePage/detailspage.dart';
 import 'package:vj_teachers/View/UplaodVideo/videoplayer.dart';
